@@ -95,28 +95,50 @@ echo "Geany and its plugins have been installed successfully!"
 if [ "$SUDO_USER" ]; then
     HOME=$(eval echo ~$SUDO_USER)
 fi
-
-echo "Changing Geany configs so the underlines words show up"
 # Define the path to search in, starting with the user's home directory.
 SEARCH_PATH="$HOME/.config/geany/filedefs"
 
 # Check if the directory exists
 if [ ! -d "$SEARCH_PATH" ]; then
-    echo "Directory $SEARCH_PATH not found."
-    exit 1
+    echo "Directory $SEARCH_PATH not found. Creating..."
+    mkdir -p "$SEARCH_PATH"
 fi
 
+# Path to the filetypes.common file
+FILE_PATH="$SEARCH_PATH/filetypes.common"
+
+# Check if the file exists
+if [ ! -f "$FILE_PATH" ]; then
+    echo "$FILE_PATH not found. Creating..."
+    # Create the file and add the necessary lines
+    echo "[styling]" >> "$FILE_PATH"
+    echo "line_height=-1;1;" >> "$FILE_PATH"
+    echo "File created and lines added."
+    exit 0 # Exit after creating the file and adding lines
+fi
+
+# If the file exists, proceed with the replacements
+# Flag to track if a replacement was made
+REPLACEMENT_MADE=0
+
 # Search for the file and perform the replacements using sed.
-find "$SEARCH_PATH" -type f -name 'filetypes.common' | while read -r file; do
-    echo "Processing $file..."
+if grep -q '#~ \[styling\]' "$FILE_PATH" || grep -q '#~ line_height=0;0;' "$FILE_PATH"; then
+    REPLACEMENT_MADE=1
     
     # Backup the original file
-    cp "$file" "$file.bak"
+    cp "$FILE_PATH" "$FILE_PATH.bak"
     
     # Use sed to perform the replacements
-    sed -i 's/#~ \[styling\]/[styling]/' "$file"
-    sed -i 's/#~ line_height=0;0;/line_height=-1;1;/' "$file"
-done
+    sed -i 's/#~ \[styling\]/[styling]/' "$FILE_PATH"
+    sed -i 's/#~ line_height=0;0;/line_height=-1;1;/' "$FILE_PATH"
+    echo "Replacements made in $FILE_PATH."
+else
+    echo "Patterns not found in $FILE_PATH. No changes made."
+fi
 
-echo "Done."
-
+# Provide a summary of what happened
+if [ "$REPLACEMENT_MADE" -eq 0 ]; then
+    echo "No replacements were made in the file."
+else
+    echo "Done with replacements."
+fi
